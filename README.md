@@ -24,6 +24,20 @@ A .NET 9 Windows application reference blueprint with automated release manageme
 - WiX Toolset v4 (for installer builds)
 - [pre-commit](https://pre-commit.com/) (for Git hooks)
 
+### Using Nix (Recommended for macOS/Linux)
+
+This project includes a `flake.nix` for reproducible development environments:
+
+```bash
+# Enter the development shell (installs all tools automatically)
+nix develop
+
+# Or with direnv (automatic activation)
+direnv allow
+```
+
+The Nix shell provides: .NET 9 SDK, Node.js (commitlint), actionlint, zizmor, act, pre-commit, and more.
+
 ## Quick Start
 
 ```bash

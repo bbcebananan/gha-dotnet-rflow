@@ -405,3 +405,11 @@ artifacts-dotnet-releaser/
 *.sln.docstates
 
 temp/
+
+# Nix
+result
+result-*
+.direnv/
+
+# Secrets (for act)
+.secrets
