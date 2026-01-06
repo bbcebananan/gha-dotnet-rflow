@@ -1,0 +1,45 @@
+# Auto-label PRs based on file paths
+# Used by actions/labeler action
+
+app:
+  - changed-files:
+      - any-glob-to-any-file: 'src/MyApp/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'tests/**'
+
+installer:
+  - changed-files:
+      - any-glob-to-any-file: 'installer/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.csproj'
+          - 'Directory.Build.props'
+          - 'nuget.config'
+
+release:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'release-please-config.json'
+          - '.release-please-manifest.json'
+          - 'dotnet-releaser.toml'
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'appsettings*.json'
+          - 'web.config'
+          - '.editorconfig'

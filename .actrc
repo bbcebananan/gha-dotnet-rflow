@@ -1,0 +1,15 @@
+# nektos/act configuration
+# See: https://github.com/nektos/act
+
+# Use medium-sized runner image (good balance of size vs compatibility)
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+-P windows-latest=catthehacker/ubuntu:act-latest
+
+# Force amd64 architecture (required on Apple Silicon)
+--container-architecture linux/amd64
+
+# Reuse containers between runs for faster iteration
+--reuse
+
+# Artifact server path (uncomment to enable artifact upload/download)
+# --artifact-server-path /tmp/act-artifacts

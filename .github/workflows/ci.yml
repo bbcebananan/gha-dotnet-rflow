@@ -2,18 +2,32 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - "release/**"
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/CODEOWNERS'
+      - "**.md"
+      - "docs/**"
+      - ".github/CODEOWNERS"
   pull_request:
-    branches: [main, develop, 'release/**']
+    branches:
+      - main
+      - develop
+      - "release/**"
+    types: [opened, synchronize, reopened, labeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
-  DOTNET_VERSION: '9.0.x'
-  SOLUTION_FILE: 'MyApp.sln'
-  BUILD_CONFIGURATION: 'Release'
+  DOTNET_VERSION: "9.0.x"
+  SOLUTION_FILE: "MyApp.sln"
+  BUILD_CONFIGURATION: "Release"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -21,25 +35,30 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: windows-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
+      - name: Restore NuGet cache
+        # v4 - Read-only cache restore to prevent cache poisoning attacks
+        uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
@@ -58,7 +77,8 @@ jobs:
             --results-directory ./TestResults
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: test-results
@@ -66,24 +86,86 @@ jobs:
           retention-days: 7
 
       - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v4
+        # v5
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
         if: success()
         with:
           files: ./TestResults/**/coverage.cobertura.xml
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Save NuGet cache
+        # v4 - Only save cache on push events (not PRs) to prevent cache poisoning
+        if: github.event_name == 'push'
+        uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # Required to cancel workflow on lint failure
+
+    steps:
+      - name: Checkout
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Check formatting
+        id: format-check
+        run: dotnet format ${{ env.SOLUTION_FILE }} --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+
+      - name: Cancel workflow on lint failure
+        if: steps.format-check.outcome == 'failure'
+        # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            console.log('Lint failed - cancelling workflow to save CI minutes');
+            await github.rest.actions.cancelWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+
+      - name: Fail job if lint failed
+        if: steps.format-check.outcome == 'failure'
+        run: |
+          echo "::error::Format check failed. Run 'dotnet format' to fix formatting."
+          exit 1
+
   pester-tests:
     name: Pester Integration Tests
     runs-on: windows-latest
     needs: build-and-test
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        with:
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -99,8 +181,8 @@ jobs:
       - name: Run Pester Tests (Unit Only)
         shell: pwsh
         env:
-          CI: 'true'
-          SKIP_AUTH_TESTS: 'true'
+          CI: "true"
+          SKIP_AUTH_TESTS: "true"
         run: |
           $config = New-PesterConfiguration
           $config.Run.Path = './tests/Scripts'
@@ -114,31 +196,53 @@ jobs:
           Invoke-Pester -Configuration $config
 
       - name: Upload Pester Results
-        uses: actions/upload-artifact@v4
+        # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
           name: pester-results
           path: ./TestResults/pester-results.xml
           retention-days: 7
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Preview MSI Installer (Label-Triggered)
+  # ─────────────────────────────────────────────────────────────────────────────
+  # To build a preview MSI for your PR:
+  # 1. Add the 'preview-msi' label to your PR
+  # 2. CI will build MSI installers for x64 and arm64
+  # 3. A comment with download instructions will be added to the PR
+  # ─────────────────────────────────────────────────────────────────────────────
+
   build-installer-preview:
-    name: Build MSI Installer (Preview)
+    name: Build MSI Preview (${{ matrix.architecture }})
     runs-on: windows-latest
     needs: build-and-test
-    if: github.event_name == 'pull_request'
+    if: |
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'preview-msi')
+    permissions:
+      contents: read
+      pull-requests: write
 
     strategy:
+      fail-fast: false
       matrix:
-        architecture: [x64]
+        architecture: [x64, arm64]
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -149,12 +253,14 @@ jobs:
         run: wix extension add -g WixToolset.UI.wixext WixToolset.Util.wixext WixToolset.Iis.wixext
 
       - name: Build Application
+        env:
+          ARCH: ${{ matrix.architecture }}
         run: |
           dotnet publish src/MyApp/MyApp.csproj `
             -c Release `
-            -r win-${{ matrix.architecture }} `
+            -r win-$env:ARCH `
             --self-contained `
-            -o ./publish/win-${{ matrix.architecture }}
+            -o ./publish/win-$env:ARCH
 
       - name: Extract Version
         id: version
@@ -167,39 +273,84 @@ jobs:
 
       - name: Build MSI
         working-directory: installer
+        env:
+          PRODUCT_VERSION: ${{ steps.version.outputs.version }}
+          ARCH: ${{ matrix.architecture }}
         run: |
           wix build Package.wxs IISConfiguration.wxs Directories.wxs Features.wxs `
             -ext WixToolset.UI.wixext `
             -ext WixToolset.Util.wixext `
             -ext WixToolset.Iis.wixext `
-            -arch ${{ matrix.architecture }} `
-            -d ProductVersion=${{ steps.version.outputs.version }} `
-            -d InstallerPlatform=${{ matrix.architecture }} `
-            -d PublishDir=..\publish\win-${{ matrix.architecture }} `
-            -o ..\artifacts\MyApp-${{ steps.version.outputs.version }}-win-${{ matrix.architecture }}.msi
+            -arch $env:ARCH `
+            -d ProductVersion=$env:PRODUCT_VERSION `
+            -d InstallerPlatform=$env:ARCH `
+            -d PublishDir=..\publish\win-$env:ARCH `
+            -o ..\artifacts\MyApp-$env:PRODUCT_VERSION-win-$env:ARCH.msi
 
       - name: Upload MSI Artifact
-        uses: actions/upload-artifact@v4
+        # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: msi-installer-preview-${{ matrix.architecture }}
           path: ./artifacts/*.msi
           retention-days: 7
 
-  lint:
-    name: Code Quality
+  comment-msi-preview:
+    name: Comment MSI Preview Info
     runs-on: ubuntu-latest
+    needs: build-installer-preview
+    if: |
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'preview-msi')
+    permissions:
+      pull-requests: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Comment PR with preview info
+        # v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          VERSION: ${{ needs.build-installer-preview.outputs.version }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          script: |
+            const version = process.env.VERSION;
+            const runId = process.env.RUN_ID;
+            const repo = process.env.REPO;
 
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.SOLUTION_FILE }}
+            const body = `## Preview MSI Installers
 
-      - name: Check formatting
-        run: dotnet format ${{ env.SOLUTION_FILE }} --verify-no-changes --verbosity diagnostic
+            MSI installers have been built for this PR:
+
+            | Architecture | Artifact |
+            |--------------|----------|
+            | **x64** | \`msi-installer-preview-x64\` |
+            | **arm64** | \`msi-installer-preview-arm64\` |
+
+            **Version:** \`${version}\`
+
+            ### Download Instructions
+
+            1. Go to the [workflow run](https://github.com/${repo}/actions/runs/${runId})
+            2. Scroll to the **Artifacts** section at the bottom
+            3. Download the desired MSI installer
+
+            Or use the GitHub CLI:
+            \`\`\`bash
+            # Download x64 installer
+            gh run download ${runId} -n msi-installer-preview-x64
+
+            # Download arm64 installer
+            gh run download ${runId} -n msi-installer-preview-arm64
+            \`\`\`
+
+            > **Note:** Artifacts are retained for 7 days. Once the label is added, every new commit will automatically build new installers.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

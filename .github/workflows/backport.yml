@@ -1,9 +1,13 @@
-name: Backport to Release Branch
+name: Backport
 
-on:
-  pull_request:
-    types: [closed, labeled]
-    branches: [main]
+# Justification for pull_request_target: Required for backport action to have write permissions
+# to create branches and PRs. Risk is mitigated by:
+# 1. Only running on merged PRs from the same repository (not forks)
+# 2. Using persist-credentials: false on checkout
+# 3. The backport action doesn't execute untrusted PR code
+on: # zizmor: ignore[dangerous-triggers]
+  pull_request_target:
+    types: [closed]
 
 permissions:
   contents: write
@@ -12,62 +16,29 @@ permissions:
 jobs:
   backport:
     name: Backport PR
-    if: >
-      github.event.pull_request.merged == true &&
-      contains(toJson(github.event.pull_request.labels.*.name), 'backport')
     runs-on: ubuntu-latest
+    # Only run on merged PRs from the same repository (not forks)
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
-      - name: Get target branches from labels
-        id: get-branches
-        run: |
-          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
-          BRANCHES=$(echo "$LABELS" | jq -r '.[] | select(startswith("backport ")) | sub("backport "; "")' | tr '\n' ' ')
-          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
-          echo "Found backport branches: $BRANCHES"
-
-      - name: Cherry-Pick to Release Branch
-        if: steps.get-branches.outputs.branches != ''
-        uses: carloscastrojumo/github-cherry-pick-action@v1
+      - name: Backport Action
+        # v3
+        uses: korthout/backport-action@c656f5d5851037b2b38fb5db2691a03fa229e3b2
         with:
-          branch: ${{ steps.get-branches.outputs.branches }}
-          labels: |
-            cherry-pick
-            automated
-          title-prefix: '[Backport] '
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          label_pattern: '^backport ([^ ]+)$'
+          pull_description: |
+            Backport of #${pull_number} to `${target_branch}`.
 
-  label-guidance:
-    name: Label Guidance
-    if: >
-      github.event.action == 'labeled' &&
-      startsWith(github.event.label.name, 'backport ')
-    runs-on: ubuntu-latest
+            ---
 
-    steps:
-      - name: Add comment with instructions
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const branch = context.payload.label.name.replace('backport ', '');
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: `This PR is marked for backport to \`${branch}\`.
-
-            When this PR is merged, a cherry-pick PR will be automatically created targeting the \`${branch}\` branch.
-
-            **To backport to additional branches:** Add more labels in the format \`backport <branch-name>\`.
-
-            **Available release branches:**
-            - \`release/1.x\` - Version 1.x maintenance
-            - \`release/2.x\` - Version 2.x maintenance (if applicable)`
-            });
+            ${pull_description}

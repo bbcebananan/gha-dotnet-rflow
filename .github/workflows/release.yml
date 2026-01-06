@@ -2,55 +2,77 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
   workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   DOTNET_VERSION: '9.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
-permissions:
-  contents: write
-  pull-requests: write
-  packages: write
-
 jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.version }}
+      version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
       major: ${{ steps.release.outputs.major }}
       minor: ${{ steps.release.outputs.minor }}
       patch: ${{ steps.release.outputs.patch }}
 
     steps:
-      - name: Release Please
+      - name: Run Release Please
+        # v4
+        uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
         id: release
-        uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Output Release Info
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          MAJOR: ${{ steps.release.outputs.major }}
+          MINOR: ${{ steps.release.outputs.minor }}
+          PATCH: ${{ steps.release.outputs.patch }}
+        run: |
+          echo "Release created: ${TAG_NAME}"
+          echo "Version: ${MAJOR}.${MINOR}.${PATCH}"
 
   build-and-publish:
     name: Build, Test & Publish
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: windows-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
           ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -70,20 +92,26 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: windows-latest
+    permissions:
+      contents: read
 
     strategy:
+      fail-fast: false
       matrix:
         architecture: [x64, arm64]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 0
           ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -104,19 +132,23 @@ jobs:
 
       - name: Build MSI
         working-directory: installer
+        env:
+          PRODUCT_VERSION: ${{ needs.release-please.outputs.version }}
+          ARCH: ${{ matrix.architecture }}
         run: |
           wix build Package.wxs IISConfiguration.wxs Directories.wxs Features.wxs `
-            -arch ${{ matrix.architecture }} `
+            -arch $env:ARCH `
             -ext WixToolset.UI.wixext `
             -ext WixToolset.Util.wixext `
             -ext WixToolset.Iis.wixext `
-            -d ProductVersion=${{ needs.release-please.outputs.version }} `
-            -d InstallerPlatform=${{ matrix.architecture }} `
-            -d PublishDir=..\publish\win-${{ matrix.architecture }} `
-            -o ..\artifacts\MyApp-${{ needs.release-please.outputs.version }}-win-${{ matrix.architecture }}.msi
+            -d ProductVersion=$env:PRODUCT_VERSION `
+            -d InstallerPlatform=$env:ARCH `
+            -d PublishDir=..\publish\win-$env:ARCH `
+            -o ..\artifacts\MyApp-$env:PRODUCT_VERSION-win-$env:ARCH.msi
 
       - name: Upload MSI Artifact
-        uses: actions/upload-artifact@v4
+        # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: msi-${{ matrix.architecture }}
           path: ./artifacts/*.msi
@@ -126,16 +158,20 @@ jobs:
     needs: [release-please, build-msi]
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Download x64 MSI
-        uses: actions/download-artifact@v4
+        # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: msi-x64
           path: ./artifacts
 
       - name: Download arm64 MSI
-        uses: actions/download-artifact@v4
+        # v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: msi-arm64
           path: ./artifacts
@@ -143,11 +179,12 @@ jobs:
       - name: Generate Checksums
         run: |
           cd artifacts
-          sha256sum *.msi > checksums.txt
+          sha256sum ./*.msi > checksums.txt
           cat checksums.txt
 
       - name: Upload MSI to Release
-        uses: softprops/action-gh-release@v2
+        # v2
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |
@@ -159,33 +196,40 @@ jobs:
     needs: [release-please, build-and-publish, upload-release-assets]
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Send Teams Notification
         if: ${{ vars.TEAMS_WEBHOOK_URL != '' }}
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+          WEBHOOK_URL: ${{ vars.TEAMS_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" -d '{
-            "@type": "MessageCard",
-            "@context": "http://schema.org/extensions",
-            "themeColor": "0076D7",
-            "summary": "New Release: ${{ needs.release-please.outputs.version }}",
-            "sections": [{
-              "activityTitle": "MyApp ${{ needs.release-please.outputs.version }} Released",
-              "facts": [{
-                "name": "Version",
-                "value": "${{ needs.release-please.outputs.version }}"
+          curl -H "Content-Type: application/json" -d "{
+            \"@type\": \"MessageCard\",
+            \"@context\": \"http://schema.org/extensions\",
+            \"themeColor\": \"0076D7\",
+            \"summary\": \"New Release: ${VERSION}\",
+            \"sections\": [{
+              \"activityTitle\": \"MyApp ${VERSION} Released\",
+              \"facts\": [{
+                \"name\": \"Version\",
+                \"value\": \"${VERSION}\"
               }, {
-                "name": "Tag",
-                "value": "${{ needs.release-please.outputs.tag_name }}"
+                \"name\": \"Tag\",
+                \"value\": \"${TAG_NAME}\"
               }],
-              "markdown": true
+              \"markdown\": true
             }],
-            "potentialAction": [{
-              "@type": "OpenUri",
-              "name": "View Release",
-              "targets": [{
-                "os": "default",
-                "uri": "https://github.com/${{ github.repository }}/releases/tag/${{ needs.release-please.outputs.tag_name }}"
+            \"potentialAction\": [{
+              \"@type\": \"OpenUri\",
+              \"name\": \"View Release\",
+              \"targets\": [{
+                \"os\": \"default\",
+                \"uri\": \"https://github.com/${REPO}/releases/tag/${TAG_NAME}\"
               }]
             }]
-          }' ${{ vars.TEAMS_WEBHOOK_URL }}
+          }" "${WEBHOOK_URL}"

@@ -403,3 +403,5 @@ artifacts-dotnet-releaser/
 *.user
 *.userosscache
 *.sln.docstates
+
+temp/

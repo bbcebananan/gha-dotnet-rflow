@@ -1,0 +1,16 @@
+# actionlint configuration
+# See: https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+# Self-hosted runners (if any custom labels are used)
+# self-hosted-runner:
+#   labels:
+#     - custom-runner
+
+# Configuration variables defined in repository settings
+# config-variables: []
+
+# Paths to ignore certain errors (glob patterns)
+# paths:
+#   '.github/workflows/generated-*.yml':
+#     ignore:
+#       - 'SC2086'  # shellcheck: double quote warning
