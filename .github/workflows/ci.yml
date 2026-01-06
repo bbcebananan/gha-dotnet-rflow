@@ -47,8 +47,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload Coverage to Codecov
         # v5
-        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
         if: success()
         with:
           files: ./TestResults/**/coverage.cobertura.xml
@@ -118,8 +118,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -165,8 +165,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -242,8 +242,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 

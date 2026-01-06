@@ -71,8 +71,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -110,8 +110,8 @@ jobs:
           persist-credentials: false
 
       - name: Setup .NET
-        # v4
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        # v5
+        uses: actions/setup-dotnet@2016bd2012dba4e32de620c46fe006a3ac9f0602
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -184,7 +184,7 @@ jobs:
 
       - name: Upload MSI to Release
         # v2
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: |

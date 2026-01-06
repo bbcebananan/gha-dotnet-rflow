@@ -99,7 +99,7 @@ public class DataServiceTests
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Items.Should().HaveCountLessOrEqualTo(5);
+        result.Items.Should().HaveCountLessThanOrEqualTo(5);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class DataServiceTests
         result.Should().NotBeNull();
         result.PageNumber.Should().Be(pageNumber);
         result.PageSize.Should().Be(pageSize);
-        result.Items.Should().HaveCountLessOrEqualTo(pageSize);
+        result.Items.Should().HaveCountLessThanOrEqualTo(pageSize);
         result.TotalCount.Should().BeGreaterThan(0);
     }
 
