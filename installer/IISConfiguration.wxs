@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:iis="http://wixtoolset.org/schemas/v4/wxs/iis">
+
+  <Fragment>
+    <!-- IIS Application Pool -->
+    <Component Id="IISAppPoolComponent"
+      Directory="INSTALLFOLDER"
+      Guid="E1F2A3B4-C5D6-7890-4567-901234567890">
+
+      <iis:WebAppPool Id="MyAppAppPool"
+        Name="MyAppAppPool"
+        ManagedPipelineMode="Integrated"
+        ManagedRuntimeVersion=""
+        Identity="applicationPoolIdentity"
+        IdleTimeout="0"
+        RecycleMinutes="1740">
+        <!-- Recycling at 2:00 AM -->
+        <iis:RecycleTime Value="02:00:00" />
+      </iis:WebAppPool>
+
+    </Component>
+
+    <!-- IIS Web Site -->
+    <Component Id="IISWebSiteComponent"
+      Directory="INSTALLFOLDER"
+      Guid="F2A3B4C5-D6E7-8901-5678-012345678901">
+
+      <!-- Web Site definition -->
+      <iis:WebSite Id="MyAppWebSite"
+        Description="MyApp Web Site"
+        Directory="INSTALLFOLDER"
+        AutoStart="yes"
+        StartOnInstall="yes">
+
+        <!-- HTTPS binding on port 443 -->
+        <iis:WebAddress Id="MyAppHttpsBinding"
+          Port="443"
+          Secure="yes" />
+
+        <!-- HTTP binding on port 80 (optional, for redirect) -->
+        <iis:WebAddress Id="MyAppHttpBinding"
+          Port="80"
+          Secure="no" />
+
+        <!-- Web Application -->
+        <iis:WebApplication Id="MyAppWebApp"
+          Name="MyApp"
+          WebAppPool="MyAppAppPool" />
+
+        <!-- Web Directory properties -->
+        <iis:WebDirProperties Id="MyAppWebDirProps"
+          AnonymousAccess="yes"
+          WindowsAuthentication="yes"
+          Script="yes"
+          Read="yes" />
+
+      </iis:WebSite>
+
+      <!-- MIME types (if needed) -->
+      <iis:MimeMap Id="JsonMimeType"
+        Type="application/json"
+        Extension=".json" />
+
+    </Component>
+  </Fragment>
+
+  <!-- Virtual Directory for legacy endpoint (optional) -->
+  <Fragment>
+    <Component Id="LegacyVirtualDir"
+      Directory="INSTALLFOLDER"
+      Guid="A3B4C5D6-E7F8-9012-6789-123456789012">
+      <Condition>INSTALLLEGACY</Condition>
+
+      <iis:WebVirtualDir Id="LegacyApiVDir"
+        Alias="legacy"
+        Directory="INSTALLFOLDER"
+        WebSite="MyAppWebSite">
+        <iis:WebApplication Id="LegacyWebApp"
+          Name="LegacyAPI"
+          WebAppPool="MyAppAppPool" />
+      </iis:WebVirtualDir>
+
+    </Component>
+  </Fragment>
+
+</Wix>

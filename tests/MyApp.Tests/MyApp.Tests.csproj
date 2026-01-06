@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RootNamespace>MyApp.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Test framework -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Mocking -->
+    <PackageReference Include="Moq" Version="4.*" />
+
+    <!-- Integration testing -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.*" />
+
+    <!-- Assertions -->
+    <PackageReference Include="FluentAssertions" Version="6.*" />
+
+    <!-- Code coverage -->
+    <PackageReference Include="coverlet.collector" Version="6.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MyApp\MyApp.csproj" />
+  </ItemGroup>
+
+</Project>

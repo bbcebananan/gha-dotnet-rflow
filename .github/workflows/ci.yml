@@ -1,0 +1,205 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/CODEOWNERS'
+  pull_request:
+    branches: [main, develop, 'release/**']
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  SOLUTION_FILE: 'MyApp.sln'
+  BUILD_CONFIGURATION: 'Release'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+      - name: Run Unit Tests
+        run: |
+          dotnet test ${{ env.SOLUTION_FILE }} `
+            --configuration ${{ env.BUILD_CONFIGURATION }} `
+            --no-build `
+            --verbosity normal `
+            --logger "trx;LogFileName=test-results.trx" `
+            --collect:"XPlat Code Coverage" `
+            --results-directory ./TestResults
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./TestResults
+          retention-days: 7
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: success()
+        with:
+          files: ./TestResults/**/coverage.cobertura.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  pester-tests:
+    name: Pester Integration Tests
+    runs-on: windows-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build Application
+        run: dotnet publish src/MyApp/MyApp.csproj -c Release -o ./publish
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.0 -Force -SkipPublisherCheck
+          Import-Module Pester
+
+      - name: Run Pester Tests (Unit Only)
+        shell: pwsh
+        env:
+          CI: 'true'
+          SKIP_AUTH_TESTS: 'true'
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests/Scripts'
+          $config.Run.Exit = $true
+          $config.Filter.ExcludeTag = @('WindowsAuth', 'Integration')
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = './TestResults/pester-results.xml'
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          $config.Output.Verbosity = 'Detailed'
+
+          Invoke-Pester -Configuration $config
+
+      - name: Upload Pester Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pester-results
+          path: ./TestResults/pester-results.xml
+          retention-days: 7
+
+  build-installer-preview:
+    name: Build MSI Installer (Preview)
+    runs-on: windows-latest
+    needs: build-and-test
+    if: github.event_name == 'pull_request'
+
+    strategy:
+      matrix:
+        architecture: [x64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix
+
+      - name: Add WiX Extensions
+        run: wix extension add -g WixToolset.UI.wixext WixToolset.Util.wixext WixToolset.Iis.wixext
+
+      - name: Build Application
+        run: |
+          dotnet publish src/MyApp/MyApp.csproj `
+            -c Release `
+            -r win-${{ matrix.architecture }} `
+            --self-contained `
+            -o ./publish/win-${{ matrix.architecture }}
+
+      - name: Extract Version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $version = $props.Project.PropertyGroup.Version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "Version: $version"
+
+      - name: Build MSI
+        working-directory: installer
+        run: |
+          wix build Package.wxs IISConfiguration.wxs Directories.wxs Features.wxs `
+            -ext WixToolset.UI.wixext `
+            -ext WixToolset.Util.wixext `
+            -ext WixToolset.Iis.wixext `
+            -arch ${{ matrix.architecture }} `
+            -d ProductVersion=${{ steps.version.outputs.version }} `
+            -d InstallerPlatform=${{ matrix.architecture }} `
+            -d PublishDir=..\publish\win-${{ matrix.architecture }} `
+            -o ..\artifacts\MyApp-${{ steps.version.outputs.version }}-win-${{ matrix.architecture }}.msi
+
+      - name: Upload MSI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi-installer-preview-${{ matrix.architecture }}
+          path: ./artifacts/*.msi
+          retention-days: 7
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Check formatting
+        run: dotnet format ${{ env.SOLUTION_FILE }} --verify-no-changes --verbosity diagnostic

@@ -1,0 +1,76 @@
+# dotnet-releaser configuration
+# Documentation: https://github.com/xoofx/dotnet-releaser
+
+# MSBuild project configuration
+[msbuild]
+project = "MyApp.sln"
+configuration = "Release"
+
+# GitHub repository settings
+[github]
+user = "thpham"
+repo = "gha-dotnet-rflow"
+
+# Build settings
+[build]
+# Windows-only targets for IIS deployment
+publish_platforms = ["win-x64", "win-arm64"]
+
+# Enable self-contained deployment
+self_contained = true
+
+# Testing
+[test]
+enable = true
+coverage = true
+
+# NuGet publishing (disabled for application projects)
+[nuget]
+enable = false
+
+# GitHub Release
+[release]
+enable = true
+
+# Changelog - disabled because we use Release Please
+[changelog]
+enable = false
+
+# Package formats for Windows
+[pack]
+enable = true
+
+# Create zip archives for manual deployment
+[[pack.profiles]]
+rid = "win-x64"
+kind = ["zip"]
+output = "MyApp-{version}-win-x64.zip"
+
+[[pack.profiles]]
+rid = "win-arm64"
+kind = ["zip"]
+output = "MyApp-{version}-win-arm64.zip"
+
+# Homebrew (disabled - Windows only app)
+[homebrew]
+enable = false
+
+# Scoop (Windows package manager - optional)
+[scoop]
+enable = false
+
+# AppImage (Linux - disabled)
+[appimage]
+enable = false
+
+# Debian packages (disabled - Windows only)
+[deb]
+enable = false
+
+# RPM packages (disabled - Windows only)
+[rpm]
+enable = false
+
+# tar.gz (disabled - using zip for Windows)
+[tar]
+enable = false

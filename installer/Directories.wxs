@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Fragment>
+    <!-- Directory structure -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="ManufacturerFolder" Name="MyCorp">
+        <Directory Id="INSTALLFOLDER" Name="MyApp">
+          <Directory Id="LogsFolder" Name="logs" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Application settings component -->
+    <Component Id="AppSettingsComponent" Directory="INSTALLFOLDER"
+      Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
+      <!-- Create logs directory -->
+      <CreateFolder Directory="LogsFolder">
+        <Permission User="IIS_IUSRS" GenericAll="yes" />
+        <Permission User="NETWORK SERVICE" GenericAll="yes" />
+      </CreateFolder>
+
+      <!-- Set permissions on install folder -->
+      <CreateFolder Directory="INSTALLFOLDER">
+        <Permission User="IIS_IUSRS" GenericRead="yes" GenericExecute="yes" />
+      </CreateFolder>
+    </Component>
+  </Fragment>
+
+  <!-- Published files component group -->
+  <Fragment>
+    <ComponentGroup Id="PublishedComponents" Directory="INSTALLFOLDER">
+      <!-- This would be populated by WiX harvest tool during build -->
+      <!-- For now, include the main executable -->
+      <Component Id="MainExecutable" Guid="C3D4E5F6-A7B8-9012-CDEF-123456789012">
+        <File Id="MyAppExe"
+          Source="$(PublishDir)\MyApp.exe"
+          KeyPath="yes" />
+      </Component>
+
+      <Component Id="MainDll" Guid="D4E5F6A7-B8C9-0123-DEF0-234567890123">
+        <File Id="MyAppDll"
+          Source="$(PublishDir)\MyApp.dll" />
+      </Component>
+
+      <Component Id="WebConfig" Guid="E5F6A7B8-C9D0-1234-EF01-345678901234">
+        <File Id="WebConfigFile"
+          Source="$(PublishDir)\web.config" />
+      </Component>
+
+      <Component Id="AppSettings" Guid="F6A7B8C9-D0E1-2345-F012-456789012345">
+        <File Id="AppSettingsJson"
+          Source="$(PublishDir)\appsettings.json" />
+      </Component>
+
+      <Component Id="RuntimeConfig" Guid="A7B8C9D0-E1F2-3456-0123-567890123456">
+        <File Id="RuntimeConfigJson"
+          Source="$(PublishDir)\MyApp.runtimeconfig.json" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>

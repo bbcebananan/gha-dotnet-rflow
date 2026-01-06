@@ -1,0 +1,7 @@
+# Placeholder for installer assets
+# Required files (create before building MSI):
+# - banner.bmp (493x58 pixels) - Top banner for installer dialogs
+# - dialog.bmp (493x312 pixels) - Left panel background
+# - app.ico - Application icon for Add/Remove Programs
+#
+# These can be created with any image editor or use placeholder images.

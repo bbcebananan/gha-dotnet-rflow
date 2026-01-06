@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- Product configuration -->
+  <?define ProductName = "MyApp"?>
+  <?define Manufacturer = "MyCorp"?>
+  <?define UpgradeCode = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"?>
+
+  <Package Name="$(ProductName)"
+    Version="$(ProductVersion)"
+    Manufacturer="$(Manufacturer)"
+    UpgradeCode="$(UpgradeCode)"
+    Compressed="yes"
+    InstallerVersion="500"
+    Scope="perMachine">
+
+    <!-- Allow upgrades and prevent downgrades -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+      Schedule="afterInstallInitialize"
+      AllowDowngrades="no"
+      AllowSameVersionUpgrades="yes" />
+
+    <!-- Embed cabinet files in the MSI -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- License and UI customization -->
+    <WixVariable Id="WixUILicenseRtf" Value="Assets\license.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="Assets\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="Assets\dialog.bmp" />
+
+    <!-- Use the InstallDir UI sequence -->
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+
+    <!-- Properties -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/thpham/gha-dotnet-rflow" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/thpham/gha-dotnet-rflow/releases" />
+
+    <!-- Custom icon for Add/Remove Programs -->
+    <Icon Id="ProductIcon" SourceFile="Assets\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+
+    <!-- Features -->
+    <Feature Id="ProductFeature"
+      Title="$(ProductName)"
+      Description="Main application files"
+      Level="1"
+      ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentGroupRef Id="PublishedComponents" />
+      <ComponentRef Id="AppSettingsComponent" />
+    </Feature>
+
+    <Feature Id="IISFeature"
+      Title="IIS Configuration"
+      Description="Configure IIS Application Pool and Web Site"
+      Level="1">
+      <ComponentRef Id="IISAppPoolComponent" />
+      <ComponentRef Id="IISWebSiteComponent" />
+    </Feature>
+
+  </Package>
+</Wix>

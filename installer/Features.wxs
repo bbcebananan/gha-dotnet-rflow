@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+  xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Fragment>
+    <!-- Custom Actions for installation -->
+
+    <!-- Check for .NET Runtime -->
+    <Property Id="NETRUNTIME90">
+      <RegistrySearch Id="NetRuntime90Search"
+        Root="HKLM"
+        Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.NETCore.App"
+        Name="9.0.0"
+        Type="raw" />
+    </Property>
+
+    <!-- Launch conditions -->
+    <Launch Condition="Privileged"
+      Message="Administrator privileges are required to install [ProductName]." />
+
+    <Launch Condition="VersionNT64"
+      Message="[ProductName] requires a 64-bit version of Windows." />
+
+    <!-- Service account setup (if needed) -->
+    <Component Id="ServiceAccountComponent"
+      Directory="INSTALLFOLDER"
+      Guid="B8C9D0E1-F2A3-4567-1234-678901234567">
+      <Condition>INSTALLSERVICE</Condition>
+      <!-- Placeholder for service installation if needed -->
+      <CreateFolder />
+    </Component>
+
+    <!-- Environment variables (optional) -->
+    <Component Id="EnvironmentVariables"
+      Directory="INSTALLFOLDER"
+      Guid="C9D0E1F2-A3B4-5678-2345-789012345678">
+      <Environment Id="MYAPP_HOME"
+        Name="MYAPP_HOME"
+        Action="set"
+        Permanent="no"
+        System="yes"
+        Part="all"
+        Value="[INSTALLFOLDER]" />
+    </Component>
+
+    <!-- Registry entries -->
+    <Component Id="RegistryEntries"
+      Directory="INSTALLFOLDER"
+      Guid="D0E1F2A3-B4C5-6789-3456-890123456789">
+      <RegistryKey Root="HKLM"
+        Key="SOFTWARE\MyCorp\MyApp">
+        <RegistryValue Type="string"
+          Name="InstallPath"
+          Value="[INSTALLFOLDER]" />
+        <RegistryValue Type="string"
+          Name="Version"
+          Value="$(ProductVersion)" />
+        <RegistryValue Type="integer"
+          Name="InstallDate"
+          Value="[Date]" />
+      </RegistryKey>
+    </Component>
+
+  </Fragment>
+</Wix>
