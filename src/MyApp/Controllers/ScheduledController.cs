@@ -62,9 +62,9 @@ public sealed class ScheduledController : ControllerBase
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of task statuses</returns>
     [HttpGet("Status")]
-    [ProducesResponseType(typeof(IReadOnlyList<TaskStatus>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<Services.TaskStatus>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<IReadOnlyList<TaskStatus>>> GetStatus(
+    public async Task<ActionResult<IReadOnlyList<Services.TaskStatus>>> GetStatus(
         CancellationToken cancellationToken = default)
     {
         var statuses = await _scheduledTaskService.GetStatusAsync(cancellationToken);
