@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using MyApp.Options;
 using MyApp.Services;
+using Xunit;
 
 namespace MyApp.Tests.Unit;
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using MyApp.Options;
 using MyApp.Services;
+using Xunit;
 
 namespace MyApp.Tests.Unit;
 
@@ -82,8 +83,8 @@ public class DataServiceTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Items.Should().AllSatisfy(x =>
-            x.Name.Contains("Operations", StringComparison.OrdinalIgnoreCase) ||
-            x.Description.Contains("Operations", StringComparison.OrdinalIgnoreCase));
+            (x.Name.Contains("Operations", StringComparison.OrdinalIgnoreCase) ||
+            x.Description.Contains("Operations", StringComparison.OrdinalIgnoreCase)).Should().BeTrue());
     }
 
     [Fact]
