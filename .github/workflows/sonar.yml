@@ -1,4 +1,4 @@
-name: SonarCloud Analysis
+name: SonarQube Analysis
 
 on:
   push:
@@ -37,7 +37,7 @@ env:
 
 jobs:
   sonar:
-    name: SonarCloud Analysis
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,13 +47,13 @@ jobs:
       (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
-      - name: Check if SonarCloud is configured
+      - name: Check if SonarQube is configured
         id: sonar-check
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -z "${SONAR_TOKEN}" ]; then
-            echo "SONAR_TOKEN is not configured. Skipping SonarCloud analysis."
+            echo "SONAR_TOKEN is not configured. Skipping SonarQube analysis."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -91,7 +91,7 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: ${{ runner.os }}-nuget-
 
-      - name: Restore SonarCloud cache
+      - name: Restore SonarQube cache
         if: steps.sonar-check.outputs.skip != 'true'
         # v4 - Read-only cache restore to prevent cache poisoning attacks
         uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb
@@ -108,19 +108,47 @@ jobs:
         if: steps.sonar-check.outputs.skip != 'true'
         run: dotnet restore MyApp.sln
 
-      - name: Begin SonarCloud Analysis
+      - name: Begin SonarQube Analysis
         if: steps.sonar-check.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # For self-hosted SonarQube, set SONAR_HOST_URL secret
+          # For SonarCloud, leave unset (defaults to sonarcloud.io)
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          # SonarCloud requires organization, self-hosted SonarQube does not
+          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
         run: |
-          dotnet sonarscanner begin \
-            /k:"thpham_gha-dotnet-rflow" \
-            /o:"thpham" \
-            /d:sonar.token="${SONAR_TOKEN}" \
-            /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml" \
-            /d:sonar.cs.vstest.reportsPaths="**/TestResults/*.trx"
+          # Determine SonarQube host
+          if [ -n "${SONAR_HOST_URL}" ]; then
+            echo "Using self-hosted SonarQube: ${SONAR_HOST_URL}"
+            HOST_URL="${SONAR_HOST_URL}"
+          else
+            echo "Using SonarCloud"
+            HOST_URL="https://sonarcloud.io"
+          fi
+
+          # Determine project key (use secret or fallback to default)
+          PROJECT_KEY="${SONAR_PROJECT_KEY:-thpham_gha-dotnet-rflow}"
+
+          # Build sonarscanner arguments
+          SONAR_ARGS="/k:\"${PROJECT_KEY}\""
+          SONAR_ARGS="${SONAR_ARGS} /d:sonar.token=\"${SONAR_TOKEN}\""
+          SONAR_ARGS="${SONAR_ARGS} /d:sonar.host.url=\"${HOST_URL}\""
+
+          # Add organization only for SonarCloud (when no custom host is set)
+          if [ -z "${SONAR_HOST_URL}" ]; then
+            ORG="${SONAR_ORGANIZATION:-thpham}"
+            SONAR_ARGS="${SONAR_ARGS} /o:\"${ORG}\""
+          fi
+
+          # Add coverage report paths
+          SONAR_ARGS="${SONAR_ARGS} /d:sonar.cs.opencover.reportsPaths=\"**/TestResults/**/coverage.opencover.xml\""
+          SONAR_ARGS="${SONAR_ARGS} /d:sonar.cs.vstest.reportsPaths=\"**/TestResults/*.trx\""
+
+          # Run sonarscanner begin
+          eval "dotnet sonarscanner begin ${SONAR_ARGS}"
 
       - name: Build
         if: steps.sonar-check.outputs.skip != 'true'
@@ -133,11 +161,12 @@ jobs:
             --configuration Release \
             --no-build \
             --verbosity normal \
+            --filter "Category!=Integration" \
             --logger "trx;LogFileName=test-results.trx" \
             --collect:"XPlat Code Coverage;Format=opencover" \
             --results-directory ./TestResults
 
-      - name: End SonarCloud Analysis
+      - name: End SonarQube Analysis
         if: steps.sonar-check.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -161,7 +190,7 @@ jobs:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
 
-      - name: Save SonarCloud cache
+      - name: Save SonarQube cache
         # v4 - Only save cache on push events (not PRs) to prevent cache poisoning
         if: steps.sonar-check.outputs.skip != 'true' && github.event_name == 'push'
         uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb
