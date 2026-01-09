@@ -1,6 +1,9 @@
+using CoreWCF.Configuration;
+using FluentValidation;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MyApp.Contracts;
 using MyApp.Options;
 using MyApp.Services;
 
@@ -37,6 +40,21 @@ builder.Services.AddScoped<IDataService, DataService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExternalService, ExternalService>();
 builder.Services.AddScoped<IScheduledTaskService, ScheduledTaskService>();
+
+// Register enrollment services (CoreWCF/SOAP)
+builder.Services.AddScoped<ICertificateService, CertificateService>();
+builder.Services.AddScoped<IDirectoryLookupService, DirectoryLookupService>();
+builder.Services.AddScoped<EnrollmentService>();
+
+// Register CertEnroll COM interop service (Windows-only)
+builder.Services.AddScoped<ICertEnrollService, CertEnrollService>();
+
+// Add CoreWCF services
+builder.Services.AddServiceModelServices();
+builder.Services.AddServiceModelMetadata();
+
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // Configure HTTP client for external REST API
 builder.Services.AddHttpClient<IExternalRestApiClient, ExternalRestApiClient>(client =>
@@ -92,6 +110,15 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 });
 
 app.MapControllers();
+
+// Configure CoreWCF SOAP endpoints
+app.UseServiceModel(serviceBuilder =>
+{
+    serviceBuilder.AddService<EnrollmentService>();
+    serviceBuilder.AddServiceEndpoint<EnrollmentService, IEnrollmentService>(
+      new CoreWCF.BasicHttpBinding(),
+      "/soap/enrollment");
+});
 
 app.Run();
 

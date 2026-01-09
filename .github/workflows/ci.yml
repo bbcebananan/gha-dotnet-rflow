@@ -66,11 +66,11 @@ jobs:
 
       - name: Restore NuGet cache
         # v4 - Read-only cache restore to prevent cache poisoning attacks
+        # NuGet packages are immutable, so no hash-based invalidation needed
         uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: ${{ runner.os }}-nuget-
+          key: ${{ runner.os }}-nuget
 
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
@@ -109,11 +109,12 @@ jobs:
 
       - name: Save NuGet cache
         # v4 - Only save cache on push events (not PRs) to prevent cache poisoning
+        # NuGet packages are immutable, so no hash-based invalidation needed
         if: github.event_name == 'push'
         uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          key: ${{ runner.os }}-nuget
 
   lint:
     name: Code Quality

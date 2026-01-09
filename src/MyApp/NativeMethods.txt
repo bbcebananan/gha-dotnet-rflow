@@ -1,0 +1,17 @@
+// Certificate Request disposition flags
+CR_IN_*
+
+// Object Identifiers for crypto operations (algorithms, extensions, etc.)
+szOID_*
+
+// Cryptographic provider error codes
+NTE_FAIL
+
+// Certificate Services error codes
+CERTSRV_E_*
+
+// Certificate error codes
+CERT_E_*
+
+// General Windows error handling
+WIN32_ERROR

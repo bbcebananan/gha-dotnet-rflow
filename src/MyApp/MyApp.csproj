@@ -5,7 +5,19 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <RootNamespace>MyApp</RootNamespace>
     <AssemblyName>MyApp</AssemblyName>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <!-- Global usings for CoreWCF and FluentValidation -->
+  <ItemGroup>
+    <Using Include="CoreWCF" />
+    <Using Include="CoreWCF.Configuration" />
+    <Using Include="CoreWCF.Channels" />
+    <Using Include="CoreWCF.Description" />
+    <Using Include="System.Runtime.Serialization" />
+    <Using Include="FluentValidation" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Windows Authentication -->
@@ -25,6 +37,44 @@
 
     <!-- HTTP client for external APIs -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.*" />
+
+    <!-- CoreWCF for SOAP/WCF endpoints -->
+    <PackageReference Include="CoreWCF.Http" Version="1.8.0" />
+
+    <!-- FluentValidation for request validation -->
+    <PackageReference Include="FluentValidation" Version="12.0.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
+
+    <!-- Certificate Enrollment COM Interop (replaces local DLL) -->
+    <!-- NoWarn NU1701: Package targets .NET Framework but COM interop works at runtime on Windows -->
+    <PackageReference Include="Interop.CERTENROLLLib.Unofficial" Version="1.0.0" NoWarn="NU1701" />
+
+    <!-- P/Invoke source generator for Windows APIs -->
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.205">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- OpenAPI client generation -->
+    <PackageReference Include="NSwag.ApiDescription.Client" Version="14.6.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Directory Services for AD operations -->
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="9.0.*" />
+
+    <!-- Memory and runtime utilities -->
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
+
+    <!-- Cryptography for certificate operations -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.*" />
+  </ItemGroup>
+
+  <!-- CsWin32 native methods configuration -->
+  <ItemGroup>
+    <AdditionalFiles Include="NativeMethods.txt" />
   </ItemGroup>
 
 </Project>
